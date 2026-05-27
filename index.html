@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auth Bella Clouds Pro</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: { cloud: { 900: '#0f172a', 800: '#1e293b', 700: '#334155' } }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 3px; }
+        
+        .glass { background: rgba(30, 41, 59, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .fade-in { animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        .spin-slow { animation: spin 2s linear infinite; }
+    </style>
+</head>
+<body class="bg-cloud-900 text-gray-200 font-sans h-screen overflow-hidden flex selection:bg-blue-500/30">
+
+    <!-- Sidebar -->
+    <aside class="w-64 glass border-r border-gray-800 flex flex-col justify-between hidden md:flex shrink-0">
+        <div>
+            <div class="p-6 flex items-center gap-4 border-b border-gray-800">
+                <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+                    <i class="fa-solid fa-cloud"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-white tracking-wide leading-tight">BELLA CLOUDS</h1>
+                    <p class="text-[10px] text-blue-400 font-mono tracking-widest uppercase">Admin Console</p>
+                </div>
+            </div>
+            <nav class="p-4 space-y-1">
+                <p class="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Menu Utama</p>
+                <a href="#" class="flex items-center gap-3 px-3 py-2.5 bg-blue-500/10 text-blue-400 rounded-lg"><i class="fa-solid fa-users w-5"></i> Manajemen User</a>
+                <a href="#" onclick="UI.toggleMaintenance()" class="flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition"><i class="fa-solid fa-server w-5"></i> <span id="nav-maint-text">Status Sistem</span></a>
+                <a href="#" onclick="UI.editNotice()" class="flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition"><i class="fa-solid fa-bullhorn w-5"></i> Edit Pengumuman</a>
+                
+                <p class="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 mt-6">Utilitas</p>
+                <a href="#" onclick="DB.exportJSON()" class="flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition"><i class="fa-solid fa-download w-5"></i> Backup (Export)</a>
+                <a href="https://github.com/Edo-bo/databa" target="_blank" class="flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition"><i class="fa-brands fa-github w-5"></i> Repositori</a>
+            </nav>
+        </div>
+        <div class="p-4 border-t border-gray-800 bg-cloud-900/50">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-white text-sm font-bold">A</div>
+                <div>
+                    <p class="text-sm text-white font-medium">Administrator</p>
+                    <p class="text-xs text-green-400 flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500"></span> Online</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Container -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+        
+        <!-- Header/Topbar -->
+        <header class="h-16 glass border-b border-gray-800 flex items-center justify-between px-4 sm:px-6 z-10 shrink-0">
+            <div class="flex items-center gap-3">
+                <button class="md:hidden text-gray-400 hover:text-white"><i class="fa-solid fa-bars"></i></button>
+                <h2 class="text-lg font-semibold text-white hidden sm:block">Database Pengguna</h2>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <div id="sync-status" class="hidden sm:flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full bg-gray-800 text-gray-400 border border-gray-700">
+                    Menunggu koneksi...
+                </div>
+                <button onclick="DB.fetch()" class="w-9 h-9 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center transition border border-gray-700" title="Refresh">
+                    <i class="fa-solid fa-rotate-right" id="refresh-icon"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Content Scrollable -->
+        <div class="flex-1 overflow-y-auto p-4 sm:p-6 pb-24 relative" id="main-content">
+            
+            <!-- Notice Banner -->
+            <div id="notice-banner" class="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-4 mb-6 flex items-start gap-3 hidden fade-in">
+                <i class="fa-solid fa-bullhorn text-indigo-400 mt-0.5"></i>
+                <div>
+                    <h3 class="text-sm font-semibold text-indigo-300">Pengumuman Aktif</h3>
+                    <p class="text-sm text-gray-300 mt-1" id="notice-text"></p>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6 fade-in" style="animation-delay: 0.1s;">
+                <div class="glass p-4 rounded-xl border border-gray-800 relative overflow-hidden group">
+                    <div class="absolute -right-4 -top-4 text-blue-500/10 text-6xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-users"></i></div>
+                    <p class="text-xs text-gray-400 font-medium">TOTAL USER</p>
+                    <h2 class="text-2xl font-bold text-white mt-1" id="st-total">0</h2>
+                </div>
+                <div class="glass p-4 rounded-xl border border-gray-800 relative overflow-hidden group">
+                    <div class="absolute -right-4 -top-4 text-green-500/10 text-6xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-crown"></i></div>
+                    <p class="text-xs text-gray-400 font-medium">PREMIUM / VIP</p>
+                    <h2 class="text-2xl font-bold text-white mt-1" id="st-vip">0</h2>
+                </div>
+                <div class="glass p-4 rounded-xl border border-gray-800 relative overflow-hidden group">
+                    <div class="absolute -right-4 -top-4 text-red-500/10 text-6xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-ban"></i></div>
+                    <p class="text-xs text-gray-400 font-medium">TERBLOKIR</p>
+                    <h2 class="text-2xl font-bold text-white mt-1" id="st-ban">0</h2>
+                </div>
+                <div class="glass p-4 rounded-xl border border-gray-800 relative overflow-hidden group">
+                    <div class="absolute -right-4 -top-4 text-purple-500/10 text-6xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-robot"></i></div>
+                    <p class="text-xs text-gray-400 font-medium">BOT AKTIF</p>
+                    <h2 class="text-2xl font-bold text-white mt-1" id="st-bots">0</h2>
+                </div>
+            </div>
+
+            <!-- Table Section -->
+            <div class="glass rounded-xl border border-gray-800 flex flex-col fade-in" style="animation-delay: 0.2s;">
+                
+                <!-- Toolbar -->
+                <div class="p-4 border-b border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                        <div class="relative w-full sm:w-64">
+                            <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm"></i>
+                            <input type="text" id="inp-search" placeholder="Cari username / nama..." class="w-full bg-gray-900/50 border border-gray-700 text-white rounded-lg pl-9 pr-3 py-2 text-sm focus:border-blue-500 outline-none transition" oninput="UI.filterTable()">
+                        </div>
+                        <select id="inp-filter" class="bg-gray-900/50 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none transition" onchange="UI.filterTable()">
+                            <option value="all">Semua Role</option>
+                            <option value="owner">Owner</option>
+                            <option value="admin">Admin</option>
+                            <option value="user">User</option>
+                        </select>
+                    </div>
+                    
+                    <button onclick="FormUser.open()" class="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-plus"></i> Tambah User
+                    </button>
+                </div>
+                
+                <!-- Table -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-gray-300">
+                        <thead class="bg-gray-800/40 text-gray-400 text-xs uppercase font-semibold">
+                            <tr>
+                                <th class="px-4 py-3">Pengguna</th>
+                                <th class="px-4 py-3">Akses & Plan</th>
+                                <th class="px-4 py-3">Masa Berlaku</th>
+                                <th class="px-4 py-3">Data Bot</th>
+                                <th class="px-4 py-3 text-right">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body" class="divide-y divide-gray-800/50">
+                            <!-- Injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination Footer -->
+                <div class="p-3 border-t border-gray-800 flex items-center justify-between bg-gray-800/20 rounded-b-xl">
+                    <p class="text-xs text-gray-500" id="table-info">Menampilkan 0 data</p>
+                    <div class="flex gap-1" id="pagination-controls"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal: Form User -->
+    <div id="modal-form" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50 p-4 opacity-0 transition-opacity">
+        <div class="glass border border-gray-700 rounded-xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl transform scale-95 transition-transform" id="modal-form-content">
+            
+            <div class="px-6 py-4 border-b border-gray-700 flex justify-between items-center bg-gray-800/50 rounded-t-xl shrink-0">
+                <h3 class="text-lg font-bold text-white" id="modal-title">Tambah Pengguna</h3>
+                <button onclick="FormUser.close()" class="text-gray-400 hover:text-white w-8 h-8 rounded-lg hover:bg-gray-700 transition flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto space-y-6">
+                <form id="user-form" onsubmit="FormUser.save(event)">
+                    <input type="hidden" id="f-id">
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="space-y-1">
+                            <label class="text-xs font-semibold text-gray-400 uppercase">Nama Lengkap</label>
+                            <input type="text" id="f-name" required class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 outline-none">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs font-semibold text-gray-400 uppercase">Username <span class="text-red-400">*</span></label>
+                            <input type="text" id="f-username" required pattern="^[a-zA-Z0-9_]+$" title="Hanya huruf, angka, dan underscore" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 outline-none">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs font-semibold text-gray-400 uppercase">Password</label>
+                            <div class="relative">
+                                <input type="text" id="f-password" required class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 outline-none">
+                                <button type="button" onclick="FormUser.genPass()" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-blue-400"><i class="fa-solid fa-key"></i></button>
+                            </div>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs font-semibold text-gray-400 uppercase">Prefix Bot</label>
+                            <input type="text" id="f-prefix" placeholder="Misal: . atau ! (Kosong = Multi Prefix)" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 outline-none">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 p-4 rounded-lg bg-gray-800/30 border border-gray-700/50">
+                        <div class="space-y-1">
+                            <label class="text-xs font-semibold text-gray-400 uppercase">Role</label>
+                            <select id="f-role" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none">
+                                <option value="User">User</option><option value="Admin">Admin</option><option value="Owner">Owner</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs font-semibold text-gray-400 uppercase">Plan</label>
+                            <select id="f-plan" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none">
+                                <option value="Free">Free</option><option value="Reguler">Reguler</option><option value="Pro">Pro</option><option value="Enterprise">Enterprise</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs font-semibold text-gray-400 uppercase">Status</label>
+                            <select id="f-status" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none">
+                                <option value="Aktif">Aktif</option><option value="Premium">Premium</option><option value="VIP">VIP</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div class="space-y-1 relative">
+                            <label class="text-xs font-semibold text-gray-400 uppercase flex justify-between">
+                                Masa Aktif
+                                <label class="flex items-center gap-1 text-[10px] text-blue-400 cursor-pointer">
+                                    <input type="checkbox" id="f-perm" onchange="FormUser.togglePerm()" class="rounded border-gray-700 bg-gray-900"> Permanen
+                                </label>
+                            </label>
+                            <input type="date" id="f-expired" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-xs font-semibold text-gray-400 uppercase">Maksimal Instance Bot</label>
+                            <input type="number" id="f-max" min="1" required class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none">
+                        </div>
+                    </div>
+
+                    <!-- API KEYS Section -->
+                    <div class="mt-6 border-t border-gray-800 pt-4">
+                        <h4 class="text-sm font-semibold text-white mb-3 flex items-center gap-2"><i class="fa-solid fa-code text-blue-500"></i> Kredensial API Eksternal</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input type="text" id="f-api-openai" placeholder="OpenAI API Key (sk-...)" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none">
+                            <input type="text" id="f-api-gemini" placeholder="Gemini API Key (AIza...)" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none">
+                        </div>
+                    </div>
+
+                    <!-- Bot Numbers (Only Edit Mode) -->
+                    <div id="bot-numbers-section" class="mt-6 border-t border-gray-800 pt-4 hidden">
+                        <h4 class="text-sm font-semibold text-white mb-3 flex items-center gap-2"><i class="fa-brands fa-whatsapp text-green-500"></i> Nomor Bot Aktif</h4>
+                        <div class="flex gap-2 mb-2">
+                            <input type="number" id="f-new-bot" placeholder="6281234..." class="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none">
+                            <button type="button" onclick="FormUser.addBotNumber()" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm transition">Tambah</button>
+                        </div>
+                        <div id="bot-list" class="flex flex-wrap gap-2 mt-2"></div>
+                    </div>
+
+                    <div class="mt-6 border-t border-gray-800 pt-4 flex justify-end gap-3 shrink-0">
+                        <button type="button" onclick="FormUser.close()" class="px-4 py-2 rounded-lg text-sm text-gray-400 hover:bg-gray-800 transition">Batal</button>
+                        <button type="submit" class="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition shadow-lg shadow-blue-500/25 flex items-center gap-2">
+                            <i class="fa-solid fa-floppy-disk"></i> Simpan Data
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- JS Logic -->
+    <script>
+        /**
+         * Core Database Management
+         */
+        const DB = {
+            API_URL: '/api/database',
+            data: { version: "6.0.0", maintenance: false, notice: "", users: [] },
+            sha: null,
+            tempBotNumbers: [],
+
+            async fetch() {
+                UI.setLoading(true);
+                try {
+                    const res = await fetch(this.API_URL);
+                    if (!res.ok) throw new Error("API Backend Vercel tidak merespon.");
+                    
+                    const result = await res.json();
+                    this.data = result.data;
+                    this.sha = result.sha;
+                    
+                    UI.setStatus('success', 'Tersinkronisasi Real-time');
+                    if(result.warning) UI.toast(result.warning, 'warning');
+                } catch (error) {
+                    console.error(error);
+                    // Fallback to RAW for browser preview
+                    try {
+                        const raw = await fetch('https://raw.githubusercontent.com/Edo-bo/databa/main/databaseku');
+                        this.data = await raw.json();
+                        UI.setStatus('warning', 'Mode Preview (RAW)');
+                        UI.toast('Membaca data publik. Perubahan tidak tersimpan permanen tanpa backend Vercel.', 'info');
+                    } catch (e) {
+                        UI.setStatus('error', 'Koneksi Gagal');
+                        UI.toast('Gagal memuat database!', 'error');
+                    }
+                }
+                UI.setLoading(false);
+                UI.render();
+            },
+
+            async push(commitMessage) {
+                if (!this.sha) {
+                    UI.toast('Mode preview: Simulasi update berhasil (Tidak tersimpan ke GitHub)', 'success');
+                    UI.render();
+                    return;
+                }
+
+                UI.setStatus('loading', 'Menyimpan...');
+                try {
+                    const res = await fetch(this.API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ data: this.data, sha: this.sha, commitMsg: commitMessage })
+                    });
+                    
+                    const result = await res.json();
+                    if (result.success) {
+                        this.sha = result.newSha;
+                        UI.setStatus('success', 'Tersimpan ke GitHub');
+                        UI.toast('Perubahan berhasil di-push!', 'success');
+                    } else {
+                        throw new Error(result.message);
+                    }
+                } catch (error) {
+                    UI.setStatus('error', 'Gagal Push');
+                    Swal.fire({ icon: 'error', title: 'Gagal Menyimpan', text: error.message, background: '#1e293b', color: '#fff' });
+                }
+                UI.render();
+            },
+
+            exportJSON() {
+                const blob = new Blob([JSON.stringify(this.data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `BellaClouds_DB_${new Date().getTime()}.json`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            }
+        };
+
+        /**
+         * UI Manipulation
+         */
+        const UI = {
+            currentPage: 1,
+            itemsPerPage: 10,
+
+            render() {
+                // Update Stats
+                document.getElementById('st-total').innerText = DB.data.users.length;
+                document.getElementById('st-vip').innerText = DB.data.users.filter(u => ['VIP','Premium'].includes(u.status) || ['Pro','Enterprise'].includes(u.plan)).length;
+                document.getElementById('st-ban').innerText = DB.data.users.filter(u => u.banned).length;
+                
+                // Count total bots across all users
+                const totalBots = DB.data.users.reduce((acc, user) => acc + (user.botNumbers ? user.botNumbers.length : 0), 0);
+                document.getElementById('st-bots').innerText = totalBots;
+
+                // Maintenance state
+                const maintBtn = document.getElementById('nav-maint-text');
+                if(DB.data.maintenance) {
+                    maintBtn.innerHTML = 'Maintenance: <span class="text-red-500 font-bold">AKTIF</span>';
+                } else {
+                    maintBtn.innerHTML = 'Maintenance: <span class="text-green-500 font-bold">OFF</span>';
+                }
+
+                // Notice Banner
+                const notice = document.getElementById('notice-banner');
+                if (DB.data.notice) {
+                    notice.classList.remove('hidden');
+                    document.getElementById('notice-text').innerText = DB.data.notice;
+                } else {
+                    notice.classList.add('hidden');
+                }
+
+                this.filterTable();
+            },
+
+            filterTable() {
+                const search = document.getElementById('inp-search').value.toLowerCase();
+                const filter = document.getElementById('inp-filter').value.toLowerCase();
+                
+                let filtered = DB.data.users.map((u, i) => ({...u, originalIndex: i})).filter(u => {
+                    const matchSearch = u.name.toLowerCase().includes(search) || u.username.toLowerCase().includes(search);
+                    const matchFilter = filter === 'all' || u.role.toLowerCase() === filter;
+                    return matchSearch && matchFilter;
+                });
+
+                // Pagination logic
+                const totalPages = Math.ceil(filtered.length / this.itemsPerPage) || 1;
+                if(this.currentPage > totalPages) this.currentPage = totalPages;
+                
+                const start = (this.currentPage - 1) * this.itemsPerPage;
+                const paginated = filtered.slice(start, start + this.itemsPerPage);
+
+                this.renderTableData(paginated, filtered.length, start);
+                this.renderPagination(totalPages);
+            },
+
+            renderTableData(users, totalItems, startIndex) {
+                const tbody = document.getElementById('table-body');
+                tbody.innerHTML = '';
+
+                document.getElementById('table-info').innerText = `Menampilkan ${users.length > 0 ? startIndex + 1 : 0} - ${startIndex + users.length} dari ${totalItems} data`;
+
+                if (users.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-gray-500"><i class="fa-solid fa-ghost text-4xl mb-3 block"></i>Tidak ada pengguna ditemukan</td></tr>`;
+                    return;
+                }
+
+                users.forEach(user => {
+                    const isBan = user.banned;
+                    
+                    // Expiry check
+                    let expText = user.expiredAt;
+                    let expColor = 'text-gray-400';
+                    if (user.expiredAt !== 'PERMANENT') {
+                        const daysLeft = moment(user.expiredAt).diff(moment(), 'days');
+                        if (daysLeft < 0) { expText = 'Expired'; expColor = 'text-red-400 font-bold'; }
+                        else if (daysLeft <= 3) { expColor = 'text-yellow-400'; }
+                    } else {
+                        expColor = 'text-green-400 font-bold';
+                    }
+
+                    const html = `
+                        <tr class="hover:bg-gray-800/30 transition group">
+                            <td class="px-4 py-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-gray-700 to-gray-600 flex items-center justify-center font-bold text-white shadow ${isBan ? 'opacity-40 grayscale' : ''}">
+                                        ${user.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <p class="font-medium text-white text-sm flex items-center gap-2">
+                                            ${user.name}
+                                            ${isBan ? '<span class="px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 text-[10px] font-bold">BANNED</span>' : ''}
+                                        </p>
+                                        <p class="text-xs text-gray-400 font-mono">@${user.username}</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="px-2 py-0.5 rounded-md bg-gray-800 border border-gray-700 text-xs font-semibold text-gray-300">${user.role}</span>
+                                <p class="text-xs text-blue-400 mt-1 font-medium">${user.plan} Plan</p>
+                            </td>
+                            <td class="px-4 py-3">
+                                <p class="text-xs ${expColor} flex items-center gap-1"><i class="fa-regular fa-calendar"></i> ${expText}</p>
+                                <p class="text-[10px] text-gray-500 mt-1">Status: ${user.status}</p>
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="flex flex-col gap-1">
+                                    <div class="flex items-center gap-1.5 text-sm">
+                                        <i class="fa-solid fa-robot text-gray-500"></i>
+                                        <span class="font-bold text-white">${user.botNumbers ? user.botNumbers.length : 0}</span>
+                                        <span class="text-xs text-gray-500">/ ${user.maxInstances} limit</span>
+                                    </div>
+                                    <div class="flex gap-1">
+                                        ${user.apiKeys?.openai ? '<i class="fa-solid fa-key text-[10px] text-green-400" title="OpenAI Key Set"></i>' : ''}
+                                        ${user.apiKeys?.gemini ? '<i class="fa-solid fa-key text-[10px] text-blue-400" title="Gemini Key Set"></i>' : ''}
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3 text-right opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div class="flex justify-end gap-1.5">
+                                    <button onclick="FormUser.open(${user.originalIndex})" class="w-7 h-7 rounded bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white transition" title="Edit"><i class="fa-solid fa-pen text-xs"></i></button>
+                                    ${isBan 
+                                        ? `<button onclick="Actions.toggleBan(${user.originalIndex}, false)" class="w-7 h-7 rounded bg-green-500/10 text-green-400 hover:bg-green-500 hover:text-white transition" title="Unban"><i class="fa-solid fa-unlock text-xs"></i></button>`
+                                        : `<button onclick="Actions.toggleBan(${user.originalIndex}, true)" class="w-7 h-7 rounded bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500 hover:text-white transition" title="Ban"><i class="fa-solid fa-ban text-xs"></i></button>`
+                                    }
+                                    <button onclick="Actions.delete(${user.originalIndex})" class="w-7 h-7 rounded bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition" title="Hapus"><i class="fa-solid fa-trash text-xs"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.insertAdjacentHTML('beforeend', html);
+                });
+            },
+
+            renderPagination(totalPages) {
+                const wrap = document.getElementById('pagination-controls');
+                wrap.innerHTML = '';
+                
+                const btnPrev = document.createElement('button');
+                btnPrev.className = `px-2.5 py-1 rounded border border-gray-700 text-xs ${this.currentPage === 1 ? 'opacity-50 cursor-not-allowed bg-gray-800 text-gray-500' : 'bg-gray-800 hover:bg-gray-700 text-white'}`;
+                btnPrev.innerHTML = '<i class="fa-solid fa-chevron-left"></i>';
+                btnPrev.onclick = () => { if(this.currentPage > 1) { this.currentPage--; this.filterTable(); } };
+                wrap.appendChild(btnPrev);
+
+                const info = document.createElement('span');
+                info.className = 'px-3 py-1 text-xs text-gray-400 font-medium';
+                info.innerText = `${this.currentPage} / ${totalPages}`;
+                wrap.appendChild(info);
+
+                const btnNext = document.createElement('button');
+                btnNext.className = `px-2.5 py-1 rounded border border-gray-700 text-xs ${this.currentPage === totalPages ? 'opacity-50 cursor-not-allowed bg-gray-800 text-gray-500' : 'bg-gray-800 hover:bg-gray-700 text-white'}`;
+                btnNext.innerHTML = '<i class="fa-solid fa-chevron-right"></i>';
+                btnNext.onclick = () => { if(this.currentPage < totalPages) { this.currentPage++; this.filterTable(); } };
+                wrap.appendChild(btnNext);
+            },
+
+            setLoading(isLoading) {
+                const icon = document.getElementById('refresh-icon');
+                if(isLoading) icon.classList.add('spin-slow', 'text-blue-400');
+                else icon.classList.remove('spin-slow', 'text-blue-400');
+            },
+
+            setStatus(state, text) {
+                const el = document.getElementById('sync-status');
+                if(state === 'loading') el.innerHTML = `<i class="fa-solid fa-circle-notch spin-slow text-blue-400"></i> <span class="text-blue-400">${text}</span>`;
+                else if(state === 'success') el.innerHTML = `<i class="fa-solid fa-cloud-check text-green-400"></i> <span class="text-green-400">${text}</span>`;
+                else if(state === 'warning') el.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-yellow-400"></i> <span class="text-yellow-400">${text}</span>`;
+                else el.innerHTML = `<i class="fa-solid fa-cloud-xmark text-red-400"></i> <span class="text-red-400">${text}</span>`;
+            },
+
+            toast(title, icon) {
+                Swal.fire({ toast: true, position: 'bottom-end', icon, title, showConfirmButton: false, timer: 3000, background: '#1e293b', color: '#fff' });
+            },
+
+            async toggleMaintenance() {
+                DB.data.maintenance = !DB.data.maintenance;
+                await DB.push(`Toggled Maintenance Mode to ${DB.data.maintenance}`);
+            },
+
+            async editNotice() {
+                const { value: text } = await Swal.fire({
+                    title: 'Edit Pengumuman',
+                    input: 'textarea',
+                    inputValue: DB.data.notice,
+                    inputPlaceholder: 'Ketik pengumuman sistem...',
+                    showCancelButton: true,
+                    background: '#1e293b',
+                    color: '#fff',
+                    confirmButtonColor: '#3b82f6'
+                });
+                if (text !== undefined) {
+                    DB.data.notice = text;
+                    await DB.push('Updated system notice');
+                }
+            }
+        };
+
+        /**
+         * Form & User Actions
+         */
+        const FormUser = {
+            open(index = -1) {
+                const modal = document.getElementById('modal-form');
+                const content = document.getElementById('modal-form-content');
+                document.getElementById('user-form').reset();
+                document.getElementById('f-id').value = index;
+                DB.tempBotNumbers = [];
+
+                if (index !== -1) {
+                    const user = DB.data.users[index];
+                    document.getElementById('modal-title').innerText = 'Edit User: @' + user.username;
+                    document.getElementById('f-name').value = user.name;
+                    document.getElementById('f-username').value = user.username;
+                    document.getElementById('f-username').disabled = true; // Cannot edit username
+                    document.getElementById('f-password').value = user.password;
+                    document.getElementById('f-prefix').value = user.customPrefix || '';
+                    document.getElementById('f-role').value = user.role;
+                    document.getElementById('f-plan').value = user.plan;
+                    document.getElementById('f-status').value = user.status;
+                    document.getElementById('f-max').value = user.maxInstances;
+
+                    if (user.expiredAt === 'PERMANENT') {
+                        document.getElementById('f-perm').checked = true;
+                        this.togglePerm();
+                    } else {
+                        document.getElementById('f-perm').checked = false;
+                        document.getElementById('f-expired').value = user.expiredAt;
+                        this.togglePerm();
+                    }
+
+                    if (user.apiKeys) {
+                        document.getElementById('f-api-openai').value = user.apiKeys.openai || '';
+                        document.getElementById('f-api-gemini').value = user.apiKeys.gemini || '';
+                    }
+
+                    DB.tempBotNumbers = [...(user.botNumbers || [])];
+                    document.getElementById('bot-numbers-section').classList.remove('hidden');
+                    this.renderBotList();
+                } else {
+                    document.getElementById('modal-title').innerText = 'Tambah User Baru';
+                    document.getElementById('f-username').disabled = false;
+                    document.getElementById('bot-numbers-section').classList.add('hidden');
+                    document.getElementById('f-perm').checked = false;
+                    this.togglePerm();
+                }
+
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                setTimeout(() => { modal.classList.remove('opacity-0'); content.classList.remove('scale-95'); }, 10);
+            },
+
+            close() {
+                const modal = document.getElementById('modal-form');
+                const content = document.getElementById('modal-form-content');
+                modal.classList.add('opacity-0');
+                content.classList.add('scale-95');
+                setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('flex'); }, 300);
+            },
+
+            togglePerm() {
+                const isPerm = document.getElementById('f-perm').checked;
+                const expInput = document.getElementById('f-expired');
+                expInput.disabled = isPerm;
+                if(isPerm) expInput.value = '';
+                else if(!expInput.value) expInput.value = moment().add(1, 'months').format('YYYY-MM-DD');
+            },
+
+            genPass() {
+                const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%";
+                let pass = "";
+                for (let i = 0; i < 12; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
+                document.getElementById('f-password').value = pass;
+            },
+
+            addBotNumber() {
+                const input = document.getElementById('f-new-bot');
+                const val = input.value.trim();
+                const max = parseInt(document.getElementById('f-max').value) || 1;
+                
+                if(!val) return;
+                if(DB.tempBotNumbers.length >= max) return UI.toast(`Maksimal ${max} nomor bot!`, 'error');
+                if(DB.tempBotNumbers.includes(val)) return UI.toast('Nomor sudah ada!', 'warning');
+                
+                DB.tempBotNumbers.push(val);
+                input.value = '';
+                this.renderBotList();
+            },
+
+            removeBotNumber(idx) {
+                DB.tempBotNumbers.splice(idx, 1);
+                this.renderBotList();
+            },
+
+            renderBotList() {
+                const list = document.getElementById('bot-list');
+                list.innerHTML = DB.tempBotNumbers.map((num, i) => `
+                    <div class="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-xs font-mono text-gray-300 flex items-center gap-2">
+                        <i class="fa-brands fa-whatsapp text-green-500"></i> ${num}
+                        <button type="button" onclick="FormUser.removeBotNumber(${i})" class="text-red-400 hover:text-red-300 ml-1"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                `).join('');
+            },
+
+            async save(e) {
+                e.preventDefault();
+                const idx = parseInt(document.getElementById('f-id').value);
+                const username = document.getElementById('f-username').value.trim();
+
+                // Validation
+                if (idx === -1 && DB.data.users.some(u => u.username === username)) {
+                    return Swal.fire({ icon: 'error', title: 'Username Exist', text: 'Username ini sudah dipakai user lain.', background: '#1e293b', color: '#fff' });
+                }
+
+                const isPerm = document.getElementById('f-perm').checked;
+                
+                const userData = {
+                    name: document.getElementById('f-name').value,
+                    username: username,
+                    password: document.getElementById('f-password').value,
+                    role: document.getElementById('f-role').value,
+                    plan: document.getElementById('f-plan').value,
+                    status: document.getElementById('f-status').value,
+                    expiredAt: isPerm ? 'PERMANENT' : document.getElementById('f-expired').value,
+                    maxInstances: parseInt(document.getElementById('f-max').value),
+                    customPrefix: document.getElementById('f-prefix').value,
+                    apiKeys: {
+                        openai: document.getElementById('f-api-openai').value,
+                        gemini: document.getElementById('f-api-gemini').value
+                    },
+                    banned: idx !== -1 ? DB.data.users[idx].banned : false,
+                    banReason: idx !== -1 ? DB.data.users[idx].banReason : "",
+                    botNumbers: idx !== -1 ? DB.tempBotNumbers : []
+                };
+
+                if (idx === -1) DB.data.users.unshift(userData); // Add to top
+                else DB.data.users[idx] = userData;
+
+                this.close();
+                await DB.push(idx === -1 ? `Added user ${username}` : `Updated user ${username}`);
+            }
+        };
+
+        const Actions = {
+            async delete(index) {
+                const user = DB.data.users[index];
+                const res = await Swal.fire({
+                    title: 'Hapus Permanen?',
+                    text: `Data user @${user.username} dan bot-nya akan hilang.`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ef4444',
+                    background: '#1e293b', color: '#fff',
+                    confirmButtonText: 'Ya, Hapus'
+                });
+                
+                if(res.isConfirmed) {
+                    DB.data.users.splice(index, 1);
+                    await DB.push(`Deleted user ${user.username}`);
+                }
+            },
+
+            async toggleBan(index, banStatus) {
+                const user = DB.data.users[index];
+                if(banStatus) {
+                    const { value: reason } = await Swal.fire({
+                        title: 'Blokir Pengguna',
+                        input: 'text',
+                        inputLabel: 'Alasan (Opsional)',
+                        showCancelButton: true,
+                        confirmButtonColor: '#eab308',
+                        background: '#1e293b', color: '#fff'
+                    });
+                    if(reason !== undefined) {
+                        user.banned = true;
+                        user.banReason = reason;
+                        await DB.push(`Banned user ${user.username}`);
+                    }
+                } else {
+                    user.banned = false;
+                    user.banReason = '';
+                    await DB.push(`Unbanned user ${user.username}`);
+                }
+            }
+        };
+
+        // Initialize App
+        document.addEventListener('DOMContentLoaded', () => DB.fetch());
+    </script>
+</body>
+</html>
