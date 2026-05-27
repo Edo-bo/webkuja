@@ -1,0 +1,17 @@
+{
+  "name": "auth-bella-clouds-pro",
+  "version": "6.0.0",
+  "description": "Database Manager Vercel to GitHub",
+  "main": "api/index.js",
+  "scripts": {
+    "start": "node api/index.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.8",
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=18.x"
+  }
+}
