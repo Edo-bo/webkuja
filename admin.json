@@ -1,0 +1,12 @@
+[
+  {
+    "username": "admin",
+    "password": "admin",
+    "nama": "Pemilik Server"
+  },
+  {
+    "username": "teman",
+    "password": "passwordteman",
+    "nama": "Teman Saya"
+  }
+]
